@@ -1,35 +1,63 @@
 %!TEX root=../document.tex
 
 \section{Einführung}
-Dieses Protokoll-Template soll helfen den Laborübungsteil entsprechend dokumentieren zu können. Diese Vorlage ist in \LaTeX  verfasst.
+Diese Übung zeigt die Anwendung von Verschlüsselung in Java.
 
 \subsection{Ziele}
-Hier werden die zu erwerbenden Kompetenzen und deren Deskriptoren beschrieben. Diese werden von den unterweisenden Lehrkräften vorgestellt.
+Das Ziel dieser Übung ist die symmetrische und asymmetrische Verschlüsselung in Java umzusetzen. Dabei soll ein Service mit einem Client einen sicheren Kommunikationskanal aufbauen und im Anschluss verschlüsselte Nachrichten austauschen. Ebenso soll die Verwendung eines Namensdienstes zum Speichern von Informationen (hier PublicKey) verwendet werden.
 
-Dies kann natürlich auch durch eine Aufzählung erfolgen:
-
-\begin{itemize}
-	\item \textbf{Lorem ipsum:} dolor sit amet, consetetur sadipscing elitr
-	\item sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat
-	\item ut labore et dolore magna aliquyam erat, sed diam voluptua
-\end{itemize}
-
+Die Kommunikation zwischen Client und Service soll mit Hilfe einer Übertragungsmethode (IPC, RPC, Java RMI, JMS, etc) aus dem letzten Jahr umgesetzt werden.
 
 \subsection{Voraussetzungen}
-Welche Informationen sind notwendig um die Laborübung reibungslos durchführen zu können? Hier werden alle Requirements der Lehrkraft detailliert beschrieben und mit Quellen untermauert.
 
-Hier zum Beispiel die Architektur der \textit{Common Object-Request-Broker Architecture}:
+\begin{itemize}
+\item Grundlagen Verzeichnisdienst
+\item Administration eines LDAP Dienstes
+\item Grundlagen der JNDI API für eine JAVA Implementierung
+\item Grundlagen Verschlüsselung (symmetrisch, asymmetrisch)
+\item Einführung in Java Security JCA (Cipher, KeyPairGenerator, KeyFactory)
+\item Kommunikation in Java (IPC, RPC, Java RMI, JMS)
+\item Verwendung einer virtuellen Instanz für den Betrieb des Verzeichnisdienstes
+\end{itemize}
+
+\subsection{Aufgabenstellung}
+Mit Hilfe der zur Verfügung gestellten VM wird ein vorkonfiguriertes LDAP Service zur Verfügung gestellt. Dieser Verzeichnisdienst soll verwendet werden, um den PublicKey von einem Service zu veröffentlichen. Der PublicKey wird beim Start des Services erzeugt und im LDAP Verzeichnis abgespeichert. Wenn der Client das Service nutzen will, so muss zunächst der PublicKey des Services aus dem Verzeichnis gelesen werden. Dieser PublicKey wird dazu verwendet, um den symmetrischen Schlüssel des Clients zu verschlüsseln und im Anschluss an das Service zu senden.
+
+Das Service empfängt den verschlüsselten symmetrischen Schlüssel und entschlüsselt diesen mit dem PrivateKey. Nun kann eine Nachricht verschlüsselt mit dem symmetrischen Schlüssel vom Service zum Client gesendet werden.
+
+Der Client empfängt die verschlüsselte Nachricht und entschlüsselt diese mit dem symmetrischen Schlüssel. Die Nachricht wird zuletzt zur Kontrolle ausgegeben.
+\clearpage
+Die folgende Grafik soll den Vorgang verdeutlichen:
 \begin{figure}[!h]
 	\begin{center}
-		\includegraphics[width=0.5\linewidth]{images/corba.jpg}
-		\caption{Common Object-Request-Broker Architecture \cite{tanenbaum2007verteilte}}
-		\label{broker}
+		\includegraphics[width=0.8\linewidth]{images/ablauf.png}
+		\caption{Kombinierte Verschlüsselung}
+		\label{ablauf}
 	\end{center}
 \end{figure}
 
+\underline{Gruppengröße}: 1 Person
 
-\subsection{Aufgabenstellung}
-Hier wird dann die konkrete Aufgabenstellung der Laborübung definiert.
+\underline{Bewertung}: 16 Punkte
+\begin{itemize}
+	\item asymmetrische Verschlüsselung (4 Punkte)
+	\item symmetrische Verschlüsselung (4 Punkte)
+	\item Kommunikation in Java (3 Punkte)
+	\item Verwendung eines Naming Service, JNDI (3 Punkte)
+	\item Protokoll (2 Punkte)
+\end{itemize}
 
-Nun kommt ein Seitenumbruch, um eine klare Trennung der Schülerarbeit zu bestimmen.
+\underline{Links}:
+\begin{itemize}
+	\sloppy
+	\item Java Security Overview\\
+	\url{https://docs.oracle.com/javase/8/docs/technotes/guides/security/overview/ jsoverview.html}
+	\item Security Architecture\\
+	\url{https://docs.oracle.com/javase/8/docs/technotes/guides/security/spec/security-spec.doc.html}
+	\item Java Cryptography Architecture (JCA) Reference Guide\\
+	\url{https://docs.oracle.com/javase/8/docs/technotes/guides/security/crypto/CryptoSpec.html}
+\end{itemize}
+
+Read the Java Security Documentation and focus on following Classes: KeyPairGenerator, \\
+SecureRandom, KeyFactory, X509EncodedKeySpec, Cipher
 \clearpage
