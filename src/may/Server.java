@@ -15,7 +15,6 @@ import java.nio.channels.IllegalBlockingModeException;
  *
  */
 public class Server {
-	private SecureService s;
 	private ServerSocket serverS;
 	private Socket clientS;
 	private DataInputStream input;
@@ -30,14 +29,13 @@ public class Server {
 	}
 
 	/**
-	 * Creates new server socket with a specified port.
+	 * Creates a new server socket with a specified port.
 	 * 
 	 * @param port
 	 *            server socket port
 	 */
-	public Server(SecureService s, String port) {
+	public Server(String port) {
 		try {
-			this.s = s;
 			serverS = new ServerSocket(Integer.parseInt(port));
 		} catch (IOException | SecurityException | IllegalArgumentException ioe) {
 			System.err.println("Couldn't create server socket on port " + port + ": " + ioe.getMessage());
@@ -46,37 +44,82 @@ public class Server {
 	}
 
 	/**
-	 * Starts a server thread which accepts clients.
+	 * Starts the server and waits for a client. Can be terminated with [ENTER]
+	 * in case of no client.
 	 */
-	public void start() {
-		new Thread(() -> {
-			try {
-				clientS = serverS.accept();
-				input = new DataInputStream(clientS.getInputStream());
-				output = new DataOutputStream(clientS.getOutputStream());
-
-				byte[] eSK = new byte[input.readInt()];
-				input.readFully(eSK, 0, eSK.length);
-				s.decryptSecretKey(eSK);
-				byte[] msg = s.encryptMessage();
-				output.writeInt(msg.length);
-				output.write(msg);
-
-				close();
-			} catch (IOException | SecurityException | IllegalBlockingModeException e) {
-				System.err.println("Couldn't start thread: " + e.getMessage());
+	private void start() {
+		new Thread() {
+			/*
+			 * (non-Javadoc)
+			 * 
+			 * @see java.lang.Thread#run()
+			 */
+			@Override
+			public void run() {
+				try {
+					while (System.in.read() != '\n')
+						;
+					System.out.println("Terminated.");
+					System.exit(0);
+				} catch (IOException e) {
+					System.err.println("An I/O error occurred: " + e.getMessage());
+				}
 			}
-		}).start();
+		}.start();
+		System.out.println("Waiting for client ...");
+		System.out.println("Press [ENTER] to terminate.");
+		try {
+			clientS = serverS.accept();
+			input = new DataInputStream(clientS.getInputStream());
+			output = new DataOutputStream(clientS.getOutputStream());
+		} catch (IOException | SecurityException | IllegalBlockingModeException e) {
+			System.err.println("Couldn't start the connection: " + e.getMessage());
+		}
 	}
 
 	/**
-	 * Closes all data streams and the client socket connection.
+	 * Sends data with byte arrays.
+	 * 
+	 * @param bytes
+	 *            the data to send
 	 */
-	public void close() {
+	private void send(byte[] bytes) {
+		try {
+			output.writeInt(bytes.length);
+			output.write(bytes);
+		} catch (IOException e) {
+			System.err.println("Couldn't send data: " + e.getMessage());
+			System.exit(1);
+		}
+	}
+
+	/**
+	 * Get data from the client.
+	 * 
+	 * @return the received data
+	 */
+	private byte[] read() {
+		try {
+			byte[] message = new byte[input.readInt()];
+			input.readFully(message, 0, message.length);
+			return message;
+		} catch (IOException e) {
+			System.err.println("Couldn't receive data: " + e.getMessage());
+			System.exit(1);
+			return null;
+		}
+	}
+
+	/**
+	 * Closes all data streams and the socket connections.
+	 */
+	private void close() {
 		try {
 			output.close();
 			input.close();
 			clientS.close();
+			serverS.close();
+			System.out.println("Terminated.");
 		} catch (IOException e) {
 			System.err.println("Couldn't properly terminate the application: " + e.getMessage());
 			System.exit(1);
@@ -92,7 +135,16 @@ public class Server {
 	public static void main(String[] args) {
 		if (args.length != 2)
 			helpMessage();
-		Server uno = new Server(new SecureService(args[0]), args[1]);
+		SecureService s = new SecureService(args[0]);
+		Server uno = new Server(args[1]);
+		// start listening for the client
 		uno.start();
+		// decrypt the received secret key
+		s.decryptSecretKey(uno.read());
+		// send an encrypted message
+		uno.send(s.encryptMessage());
+		// terminate
+		uno.close();
+		System.exit(0);
 	}
 }

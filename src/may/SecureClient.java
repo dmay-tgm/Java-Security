@@ -1,7 +1,6 @@
 package may;
 
 import java.security.InvalidKeyException;
-import java.security.InvalidParameterException;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
@@ -37,7 +36,11 @@ public class SecureClient {
 	private String ldap;
 
 	/**
+	 * Initializes the client by generating a secret key and getting the public
+	 * key from the LDAP directory.
+	 * 
 	 * @param ldap
+	 *            the connection details for the LDAP directory.
 	 */
 	public SecureClient(String ldap) {
 		this.ldap = ldap;
@@ -46,28 +49,26 @@ public class SecureClient {
 	}
 
 	/**
-	 * Generates the secret key, that is used for message encryption.
+	 * Generates the secret key, that is used for message encryption/decryption.
 	 */
 	private void generateSecretKey() {
 		System.out.println("Generating secret key ...");
 		try {
+			// setting the algorithm
 			KeyGenerator keygen = KeyGenerator.getInstance("AES");
+			// actual generating
 			sk = keygen.generateKey();
-			System.out.println(sk.toString());
 		} catch (NoSuchAlgorithmException nsae) {
 			System.err.println("Couldn't create secret key: " + nsae.getMessage());
-			System.exit(1);
-		} catch (InvalidParameterException ipe) {
-			System.err.println("Invalid keysize: " + ipe.getMessage());
 			System.exit(1);
 		}
 	}
 
 	/**
-	 * Reads public key from ldap directory.
+	 * Reads public key from LDAP directory.
 	 */
 	private void getPublicKey() {
-		System.out.println("Connecting to LDAP ...");
+		System.out.println("Receiving public key ...");
 		// Set up the environment for creating the initial context
 		Hashtable<String, Object> env = new Hashtable<>(3);
 		env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
@@ -76,30 +77,21 @@ public class SecureClient {
 		try {
 			// Create the initial context
 			Context ctx = new InitialContext(env);
-
 			// Perform lookup and cast to target type
 			LdapContext b = (LdapContext) ctx.lookup("cn=group.service1,dc=nodomain,dc=com");
-
-			System.out.println("Receiving public key ...");
 			// get the attribute description
 			Attributes answer = b.getAttributes("", new String[] { "description" });
-
 			// the attribute's value
 			String response = answer.getAll().next().toString().split(" ")[1];
-
 			// closes the context
 			ctx.close();
 
-			System.out.println("Parsing public key ...");
 			// get binary array from hex string
 			byte[] key = DatatypeConverter.parseHexBinary(response);
-
 			// key specifications
 			X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(key);
-
 			// key factory for RSA
 			KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-
 			// generate public key from the specification
 			pk = keyFactory.generatePublic(pubKeySpec);
 		} catch (NamingException | NoSuchElementException ne) {
@@ -112,15 +104,17 @@ public class SecureClient {
 	}
 
 	/**
-	 * Encrypts the secret key with the public key from the service
+	 * Encrypts the secret key with the public key from the service.
 	 * 
 	 * @return byte array of the encrypted secret key
 	 */
 	byte[] encryptSecretKey() {
 		System.out.println("Encrypting secret key ...");
 		try {
+			// setting up the cipher
 			Cipher cipher = Cipher.getInstance("RSA");
 			cipher.init(Cipher.ENCRYPT_MODE, pk);
+			// encrypt the secret key
 			return cipher.doFinal(sk.getEncoded());
 		} catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | BadPaddingException
 				| IllegalBlockSizeException | IllegalStateException e) {
@@ -140,12 +134,14 @@ public class SecureClient {
 	String decryptMessage(byte[] msg) {
 		System.out.println("Decrypting message ...");
 		try {
+			// setting up the decrypting cipher
 			Cipher cipher = Cipher.getInstance("AES");
 			cipher.init(Cipher.DECRYPT_MODE, sk);
+			// decrypting
 			byte[] ready = cipher.doFinal(msg);
 			return new String(ready);
 		} catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | BadPaddingException
-				| IllegalBlockSizeException e) {
+				| IllegalBlockSizeException | IllegalStateException e) {
 			System.err.println("Couldn't decrypt message: " + e.getMessage());
 			System.exit(1);
 			return null;

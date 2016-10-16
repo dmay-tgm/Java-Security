@@ -29,7 +29,7 @@ import javax.xml.bind.DatatypeConverter;
 
 /**
  * Service class that generates a key pair on startup and stores the public key
- * using LDAP. If the service receives a encrypted symmetrical key, it sends an
+ * using LDAP. If the service receives an encrypted symmetrical key, it sends an
  * encrypted message to the client.
  * 
  * @author Daniel May
@@ -43,7 +43,10 @@ public class SecureService {
 
 	/**
 	 * Constructor that generates a key pair and stores the public key using
-	 * ldap.
+	 * LDAP.
+	 * 
+	 * @param ldap
+	 *            connection information for LDAP service
 	 */
 	public SecureService(String ldap) {
 		this.ldap = ldap;
@@ -57,9 +60,13 @@ public class SecureService {
 	private void generateKeyPair() {
 		System.out.println("Generating KeyPair ...");
 		try {
+			// setting up key pair generator
 			KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+			// generating randomness securely
 			SecureRandom random = SecureRandom.getInstance("SHA1PRNG", "SUN");
+			// initialize generator with 2048 bit key size
 			generator.initialize(2048, random);
+			// generating key pair
 			keyPair = generator.generateKeyPair();
 		} catch (NoSuchAlgorithmException nsae) {
 			System.err.println("Algorithm not found: " + nsae.getMessage());
@@ -74,10 +81,10 @@ public class SecureService {
 	}
 
 	/**
-	 * Stores the public key using the ldap directory service.
+	 * Stores the public key using the LDAP directory service.
 	 */
 	private void storePublicKey() {
-		System.out.println("Connecting to LDAP ...");
+		System.out.println("Storing public key ...");
 		// Set up the environment for creating the initial context
 		Hashtable<String, Object> env = new Hashtable<>(7);
 		env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
@@ -90,21 +97,15 @@ public class SecureService {
 		DirContext ctx;
 		try {
 			ctx = new InitialDirContext(env);
-
 			ModificationItem[] modifications = new ModificationItem[1];
-
 			// attribute with new value
 			Attribute mod = new BasicAttribute("description",
 					DatatypeConverter.printHexBinary(keyPair.getPublic().getEncoded()));
-
 			// save as ModificationItem
 			modifications[0] = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, mod);
-
-			System.out.println("Storing public key ...");
 			// actual storing
 			ctx.modifyAttributes("cn=group.service1,dc=nodomain,dc=com ", modifications);
-
-			// closes the context
+			// close the context
 			ctx.close();
 		} catch (NamingException ne) {
 			System.err.println("Couldn't store the key: " + ne.getMessage());
@@ -119,10 +120,12 @@ public class SecureService {
 	 *            the secret key to decrypt
 	 */
 	void decryptSecretKey(byte[] key) {
+		System.out.println("Decrypting secret key ...");
 		try {
-			System.out.println("Decrypting secret key ...");
+			// setting up cipher for decryption
 			Cipher cipher = Cipher.getInstance("RSA");
 			cipher.init(Cipher.DECRYPT_MODE, keyPair.getPrivate());
+			// decrypting
 			byte[] ready = cipher.doFinal(key);
 			sk = new SecretKeySpec(ready, 0, ready.length, "AES");
 		} catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException
@@ -135,6 +138,8 @@ public class SecureService {
 	/**
 	 * Generates a message with current date and time that is encrypted using
 	 * the secret key.
+	 * 
+	 * @return byte array of the encrypted message
 	 */
 	byte[] encryptMessage() {
 		System.out.println("Enrypting message ...");
@@ -143,14 +148,15 @@ public class SecureService {
 			Date date = new Date();
 			String message = "This super secret message was generated on " + dateFormat.format(date);
 
+			// setting up cipher for encryption
 			Cipher cipher = Cipher.getInstance("AES");
 			cipher.init(Cipher.ENCRYPT_MODE, sk);
+			// encrypt
 			return cipher.doFinal(message.getBytes());
 		} catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException
 				| BadPaddingException | IllegalArgumentException | ArrayIndexOutOfBoundsException
 				| NullPointerException e) {
 			System.err.println("Couldn't encrypt message with secret key: " + e.getMessage());
-			e.printStackTrace();
 			System.exit(1);
 			return null;
 		}
