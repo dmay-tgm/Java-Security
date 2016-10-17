@@ -4,7 +4,7 @@
 \label{sec:Ergebnisse}
 \subsection{Designüberlegungen}
 Grundsätzlich wurden beim Server und Client die Aufgaben in Kryptographie und Übertragung geteilt. Somit gibt es insgesamt 4 Klassen, wobei die Netzwerkobjekte schlussendlich die \texttt{main}-Funktion enthalten und auf die Verschlüsselungsfunktionalitäten der \texttt{SecureXXX} Klassen zurückgreifen.
-Das Klassendiagramm sieht schlussendlich wie folgt aus:\
+Das Klassendiagramm sieht letztendlich wie folgt aus:\
 
 \begin{figure}[!h]
 	\begin{center}
@@ -154,5 +154,49 @@ byte[] ready = cipher.doFinal(msg);
 return new String(ready);
 \end{lstlisting}
 Zusätzlich wird die Nachricht am Schluss wieder in einen String verwandelt.
+\clearpage
 \subsection{Testing}
-mit usage
+Der Server wurde wie folgt auf der Xubuntu-VM gestartet:
+
+\texttt{secureservice <ldap-ip:ldap-port> <service-port>}
+
+\begin{figure}[!h]
+	\begin{center}
+		\includegraphics[width=0.6\linewidth]{images/server.png}
+		\caption{Server wartet auf den Client}
+		\label{server}
+	\end{center}
+\end{figure}
+
+Zur Kontrolle wird geprüft, ob der \texttt{PublicKey} in das LDAP Verzeichnis geschrieben wurde.
+
+\begin{figure}[!h]
+	\begin{center}
+		\includegraphics[width=0.6\linewidth]{images/ldap.png}
+		\caption{\texttt{PublicKey} in hexadezimaler Darstellung}
+		\label{ldap}
+	\end{center}
+\end{figure}
+ 
+Der Client wurde wie folgt auf dem Host-System gestartet:
+
+\texttt{secureclient <ldap-ip:ldap-port> <service-ip> <service-port>}
+
+\begin{figure}[!h]
+	\begin{center}
+		\includegraphics[width=0.9\linewidth]{images/client.png}
+		\caption{Sicherer Nachrichtenaustausch aus Client Sicht}
+		\label{client}
+	\end{center}
+\end{figure}
+
+Nachdem der Client den \texttt{SecretKey} verschlüsselt weitergegeben hat, sendet der Server die verschlüsselte Nachricht und beendet danach die Kommunikation.
+\clearpage
+\begin{figure}[!h]
+	\begin{center}
+		\includegraphics[width=0.6\linewidth]{images/server2.png}
+		\caption{Server schickt sichere Nachricht}
+		\label{server2}
+	\end{center}
+\end{figure}
+Damit ist das Beispiel komplett.
